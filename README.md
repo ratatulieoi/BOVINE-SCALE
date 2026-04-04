@@ -30,16 +30,3 @@ BOVINE-SCALE/
     ├── train.ipynb              # Google Colab notebook
     └── dataset_info.md          # Dataset source, download instructions
 ```
-
----
-
-## Sprint Plan
-
-### Sprint 1 — Core Pipeline (Minggu 1–3)
-**Goal:** Foto sapi masuk → angka berat keluar di browser.
-
-### Sprint 2 — Auth + Fitur + Mobile (Minggu 4–6)
-**Goal:** Login, history, UI layak, APK jalan di HP.
-
-### Sprint 3 — Polish + Siap Presentasi (Minggu 7–8)
-**Goal:** Rapi, tidak crash, siap ditunjukkan ke dosen.
