@@ -1,6 +1,7 @@
 # BOVINE-SCALE 🐄
 
 Aplikasi estimasi berat sapi berbasis AI (YOLOv8 + React + Flask).
+
 Politeknik Elektronika Negeri Surabaya — Semester 4
 
 ---
