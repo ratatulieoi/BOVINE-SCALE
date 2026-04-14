@@ -18,7 +18,7 @@ function Footer() {
           </div>
         </div>
 
-        <div className="text-sm text-on-surface-variant">© 2024 Bovine<span className="text-primary-fixed">Scale</span>.</div>
+        <div className="text-sm text-on-surface-variant">© 2026 Bovine<span className="text-primary-fixed">Scale</span>.</div>
       </div>
     </footer>
   )

@@ -1,33 +1,103 @@
+import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
 import Navbar from '../components/Navbar'
-import { Link } from 'react-router-dom'
 
 const previewImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAhdUvKTDIddXwoQFeBoJNI6rxgVr5f-qfKm8-2Nuv1hAJi04Ye1LIBgUWwKXlDBcUROZgn-mwjP2cRVSiKt05W_V6aQWhOGBcHJCryGZ0noVK5FAMs51FZ67yXVhRHVqHA8AEYU40mYPeTG8zmfKdGnfTD7LROcZJg4H8fR-UuzXBk7tZzb6z18deDL5e7eZ5Q22lNgQc1dVyuYOOf2P2EzYxzMIlQUTb-8SDz1ojBGhGe71psbOvpclXIO2QRhavaLw-1SQk9Msk'
 
-const infoCards = [
-  {
-    icon: 'lightbulb',
-    iconColor: 'text-tertiary',
-    title: 'Better Lighting',
-    description: 'Photos taken in natural morning or evening light provide the best muscle-mass definitions.',
-  },
-  {
-    icon: 'photo_camera',
-    iconColor: 'text-primary',
-    title: 'Side Profiles Only',
-    description: 'The AI requires a complete side profile of the bovine to calculate volumetric weight metrics.',
-  },
-  {
-    icon: 'history',
-    iconColor: 'text-secondary',
-    title: 'Automated Logs',
-    description: 'Every estimate is logged into your History with a timestamp for longitudinal growth tracking.',
-  },
-]
+const API_BASE_URL = 'http://127.0.0.1:5000'
+
+type LlmPrediction = {
+  cow_detected: boolean
+  total_cows: number
+  estimated_weight_kg: number | null
+  confidence: number
+  notes: string
+}
 
 function UploadPage() {
+  const navigate = useNavigate()
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState(previewImage)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  const handleChooseFile = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setSelectedFile(file)
+    setErrorMessage('')
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleSubmit = async () => {
+    if (!selectedFile) {
+      setErrorMessage('Pilih gambar dulu')
+      return
+    }
+
+    setIsSubmitting(true)
+    setErrorMessage('')
+
+    try {
+      const formData = new FormData()
+      formData.append('image', selectedFile)
+
+      const response = await fetch(`${API_BASE_URL}/predict`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal upload gambar')
+      }
+
+      const parsed: LlmPrediction = JSON.parse(data.result_raw)
+
+      if (!parsed.cow_detected) {
+        navigate('/error', {
+          state: {
+            message: parsed.notes || 'Tidak ada sapi yang terdeteksi pada gambar ini.',
+          },
+        })
+        return
+      }
+
+      localStorage.setItem(
+        'prediction_result',
+        JSON.stringify({
+          imageUrl: previewUrl,
+          fileName: selectedFile.name,
+          provider: data.provider,
+          model: data.model,
+          ...parsed,
+        }),
+      )
+
+      navigate('/result')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Terjadi kesalahan saat memproses gambar'
+      setErrorMessage(message)
+      navigate('/error', {
+        state: {
+          message,
+        },
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="page-shell mobile-safe-space">
       <Navbar />
@@ -55,8 +125,17 @@ function UploadPage() {
                   <p className="font-medium text-on-surface-variant">JPEG or PNG, up to 10MB</p>
                 </div>
 
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+
                 <button
                   type="button"
+                  onClick={handleChooseFile}
                   className="editorial-shadow rounded-full bg-surface-container-lowest px-8 py-3 font-semibold text-primary transition-all hover:bg-white active:scale-95"
                 >
                   Choose File
@@ -83,7 +162,7 @@ function UploadPage() {
               <div className="mb-6 aspect-[4/3] overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-highest">
                 <img
                   className="h-full w-full object-cover grayscale-[0.2] transition-all duration-500 hover:grayscale-0"
-                  src={previewImage}
+                  src={previewUrl}
                   alt="High quality side profile of a healthy dairy cow standing in a green pasture"
                 />
               </div>
@@ -94,7 +173,7 @@ function UploadPage() {
                     <span className="material-symbols-outlined text-primary">analytics</span>
                     <span className="font-label font-medium text-on-surface-variant">Analyzed Metadata</span>
                   </div>
-                  <span className="font-bold text-on-surface">Pending</span>
+                  <span className="font-bold text-on-surface">{selectedFile ? selectedFile.name : 'Pending'}</span>
                 </div>
 
                 <div className="flex items-center justify-between rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-4">
@@ -102,18 +181,22 @@ function UploadPage() {
                     <span className="material-symbols-outlined text-primary">straighten</span>
                     <span className="font-label font-medium text-on-surface-variant">Profile Alignment</span>
                   </div>
-                  <span className="font-bold text-secondary">Optimal</span>
+                  <span className="font-bold text-secondary">{selectedFile ? 'Ready' : 'Waiting'}</span>
                 </div>
               </div>
 
+              {errorMessage ? <p className="mt-4 text-sm font-semibold text-red-500">{errorMessage}</p> : null}
+
               <div className="mt-8">
-                <Link
-                  to="/processing"
-                  className="flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-b from-primary to-primary-container py-5 font-headline text-xl font-bold text-on-primary shadow-lg shadow-primary/20 transition-all hover:opacity-90 active:scale-95"
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-b from-primary to-primary-container py-5 font-headline text-xl font-bold text-on-primary shadow-lg shadow-primary/20 transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Estimate Weight
+                  {isSubmitting ? 'Processing...' : 'Estimate Weight'}
                   <span className="material-symbols-outlined">trending_up</span>
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -135,5 +218,26 @@ function UploadPage() {
     </div>
   )
 }
+
+const infoCards = [
+  {
+    icon: 'lightbulb',
+    iconColor: 'text-tertiary',
+    title: 'Better Lighting',
+    description: 'Photos taken in natural morning or evening light provide the best muscle-mass definitions.',
+  },
+  {
+    icon: 'photo_camera',
+    iconColor: 'text-primary',
+    title: 'Side Profiles Only',
+    description: 'The AI requires a complete side profile of the bovine to calculate volumetric weight metrics.',
+  },
+  {
+    icon: 'history',
+    iconColor: 'text-secondary',
+    title: 'Automated Logs',
+    description: 'Every estimate is logged into your History with a timestamp for longitudinal growth tracking.',
+  },
+]
 
 export default UploadPage

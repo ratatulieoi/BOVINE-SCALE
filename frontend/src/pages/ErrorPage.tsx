@@ -1,12 +1,15 @@
 import Footer from '../components/Footer'
 import MobileNav from '../components/MobileNav'
 import Navbar from '../components/Navbar'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 const errorImage =
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCOZiUw8b8UfcREmJWP55g5-pXDlTYGpuZHnXarAmHOXMu_GWiA9HCF-86MvFqeguwf6MO5xNU0Fqg6e8kCiuZPRnaeQLTnMcIr18vbHTLxjptZPNX5Ghw9toxvQX4pVwHwDe47tc4CgWFJEUVvZJC3hBSgALxftOEQeo4S4_p6a3votXa5k4uNmDI2-L2eWy6yz-MkbzE699IGCovfs_R1W2-9YiNq4cXtP-Ds-bo8vm0DIBXoIrUD_jhCsxf7vnIDjU9nawXzzlk'
 
 function ErrorPage() {
+  const location = useLocation()
+  const message = (location.state as { message?: string } | null)?.message
+
   return (
     <div className="page-shell mobile-safe-space flex min-h-screen flex-col">
       <Navbar />
@@ -37,8 +40,7 @@ function ErrorPage() {
               </h1>
 
               <p className="max-w-md text-lg text-on-surface-variant">
-                Our system couldn't identify a bovine subject in your last upload. This usually happens when the
-                subject is partially obscured or the lighting is too flat.
+                {message || "Our system couldn't identify a bovine subject in your last upload. This usually happens when the subject is partially obscured or the lighting is too flat."}
               </p>
             </div>
 
